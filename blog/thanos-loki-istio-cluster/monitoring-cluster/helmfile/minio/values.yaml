@@ -1,0 +1,8 @@
+auth:
+  rootUser: admin
+  rootPassword: adminadmin
+
+defaultBuckets: monitoring-cluster-0, monitoring-cluster-1, loki
+
+ingress:
+  enabled: false # Istio has own ingress

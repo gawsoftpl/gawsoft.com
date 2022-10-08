@@ -1,0 +1,23 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: nip-io
+spec:
+  selector:
+    istio: gateway # use istio default controller
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*.nip.io"
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "*.nip.io"
+      tls:
+        mode: MUTUAL # Setup mTLS for ingress gateway
+        credentialName: thanos-sidecar-cluster-tls

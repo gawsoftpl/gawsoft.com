@@ -1,0 +1,28 @@
+query:
+  enabled: true
+
+  stores:
+  - "cluster-0-thanos-query-grpc.clients:10901"
+  - "cluster-0-thanos-storegateway.clients:10901"
+  - "cluster-1-thanos-query-grpc.clients:10901"
+  - "cluster-1-thanos-storegateway.clients:10901"
+
+queryFrontend:
+  enabled: true
+  extraFlags:
+    - |
+      --query-range.response-cache-config=
+      type: REDIS
+      config:
+        addr: redis-master:6379
+        db: 0
+
+receive:
+ enabled: false
+ persistence:
+  size: 20Gi
+
+metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: false

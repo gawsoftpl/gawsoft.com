@@ -1,0 +1,1 @@
+Examples from article: https://gawsoft.com/blog/monitoring-cluster-thanos-loki-istio.html

@@ -1,0 +1,141 @@
+repositories:
+- name: bitnami
+  url: https://charts.bitnami.com/bitnami
+- name: istio
+  url: https://istio-release.storage.googleapis.com/charts
+- name: prometheus-community
+  url: https://prometheus-community.github.io/helm-charts
+
+releases:
+  ###############
+  # Istio START
+  ###############
+  - name: istio-base
+    chart: istio/base
+    namespace: istio-system
+    createNamespace: true
+    wait: true
+
+  - name: istio-istiod
+    chart: istio/istiod
+    namespace: istio-system
+    createNamespace: true
+    wait: true
+
+  - name: istio-gateway
+    chart: istio/gateway
+    namespace: istio-system
+    createNamespace: true
+  ###############
+  # Istio END
+  ###############
+
+  ##############
+  # Object bucket storage
+  #############
+  - name: minio
+    chart: bitnami/minio
+    namespace: storage
+    createNamespace: true
+    values:
+    - minio/values.yaml
+
+  ################
+  # Thanos main services
+  ################
+  - name: thanos
+    chart: bitnami/thanos
+    namespace: thanos
+    createNamespace: true
+    values:
+    - thanos/values.yaml
+
+  - name: prometheus
+    chart: prometheus-community/kube-prometheus-stack
+    namespace: monitoring
+    createNamespace: true
+    values:
+      - grafana/values.yaml
+
+
+  ####################
+  # Cache for Thanos Query Frontend
+  ####################
+  - name: redis
+    chart: bitnami/redis
+    namespace: thanos
+    values:
+      - redis/values.yaml
+
+  ####################
+  # Loki stack
+  ####################
+  - name: loki
+    chart: grafana/loki-distributed
+    namespace: loki
+    values:
+      - loki/values.yaml
+
+  ##############################
+  # Clusters (Clients)
+  ##############################
+  - name: cluster-0
+    chart: bitnami/thanos
+    namespace: clients
+    createNamespace: true
+    values:
+    - clusters/cluster-0/values.yaml
+    set:
+      - name: query.stores[0]
+        value: {{ requiredEnv "CLUSTER_0_THANOS_SIDECAR_ENDPOINT" | quote }}
+
+  - name: cluster-1
+    chart: bitnami/thanos
+    namespace: clients
+    createNamespace: true
+    values:
+      - clusters/cluster-1/values.yaml
+    set:
+      - name: query.stores[0]
+        value: {{ requiredEnv "CLUSTER_1_THANOS_SIDECAR_ENDPOINT" | quote }}
+  {{- /*
+  ##############################
+   Add new clusters here (Clients)
+  ##############################
+   First create secret for bucket where cluster-2 will save metrics
+   Example:
+    apiVersion: v1
+    kind: Secret
+    metadata:
+      name: cluster-2-objstore-secret
+    stringData:
+      objstore.yml: |
+        type: s3
+        config:
+          bucket: monitoring-cluster-2
+          endpoint: minio.s3.storage.com:443
+          access_key: admin
+          secret_key: adminadmin
+          insecure: false
+
+   - name: cluster-2
+     chart: bitnami/thanos
+     values:
+     - clusters/cluster-2/values.yaml
+  #  set:
+  #    - name: query.stores[0]
+  #      value: {{ requiredEnv "CLUSTER_2_THANOS_SIDECAR_ENDPOINT" | quote }}
+    */ -}}
+
+# Global Hooks
+# Below lines is required for istio during upgraed helm files
+hooks:
+  - events:
+      - cleanup
+    command: /bin/sh
+    args:
+      - -c
+      - |
+        kubectl label namespace thanos storage istio-injection=enabled --overwrite;
+        kubectl delete pod -n thanos --all;
+        kubectl delete pod -n istio-system -l app=istio-gateway;

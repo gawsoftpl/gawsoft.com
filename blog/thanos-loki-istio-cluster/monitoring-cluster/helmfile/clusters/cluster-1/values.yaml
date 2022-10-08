@@ -1,0 +1,31 @@
+existingObjstoreSecret: cluster-1-objstore-secret
+
+queryFrontend:
+  enabled: true
+  extraFlags:
+    - |
+      --query-range.response-cache-config=
+      type: REDIS
+      config:
+        addr: redis-master.thanos.svc.cluster.local:6379
+        db: 2
+
+query:
+  enabled: true
+  grpc:
+    client:
+      tls:
+        enabled: true
+        existingSecret: thanos-query-cluster-1
+  stores:
+    - "prom-cluster-0.172.19.255.202.nip.io:443"
+
+bucketweb:
+  enabled: true
+
+compactor:
+  enabled: true
+
+storegateway:
+  enabled: true
+ 

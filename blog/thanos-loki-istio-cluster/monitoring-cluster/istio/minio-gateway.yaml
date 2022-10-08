@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: minio
+spec:
+  selector:
+    istio: gateway # use istio default controller
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "minio.172.19.255.200.nip.io"
+        - "dashboard-minio.172.19.255.200.nip.io"
+      tls:
+        httpsRedirect: false

@@ -1,0 +1,17 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: Gateway
+metadata:
+  name: loki
+spec:
+  selector:
+    istio: gateway # use istio default controller
+  servers:
+    - port:
+        number: 443
+        name: https
+        protocol: HTTPS
+      hosts:
+        - "loki.172.19.255.200.nip.io"
+      tls:
+        mode: MUTUAL # Setup mTLS for ingress gateway
+        credentialName: prom-cluster-0-tls

@@ -1,1 +1,1 @@
-Repository with examples from https://gawsoft.com
+Repository with examples from https://gawsoft.com/blog/

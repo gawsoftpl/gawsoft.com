@@ -1,0 +1,45 @@
+alertmanager:
+  enabled: false
+
+nodeExporter:
+  enabled: false
+
+prometheusOperator:
+  enabled: false
+
+kubeStateMetrics:
+  enabled: false
+
+grafana:
+  enabled: true
+  replicas: 1
+  image:
+    repository: grafana/grafana
+    tag: 7.1.0
+  sidecar:
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+      defaultDatasourceEnabled: true
+
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      url: http://loki-loki-distributed-query-frontend.loki:3100/
+      access: proxy
+    - name: Cluster-0
+      type: prometheus
+      url: http://cluster-0-thanos-query-frontend.clients:9090/
+      access: proxy
+    - name: Cluster-1
+      type: prometheus
+      url: http://cluster-1-thanos-query-frontend.clients:9090/
+      access: proxy
+    - name: Thanos
+      type: prometheus
+      url: http://thanos-query-frontend.thanos:9090/
+      access: proxy
+
+prometheus:
+  enabled: false

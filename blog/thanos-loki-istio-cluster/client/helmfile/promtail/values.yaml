@@ -1,0 +1,35 @@
+daemonset:
+  # -- Deploys Promtail as a DaemonSet
+  enabled: true
+
+config:
+  clients:
+    - url: <Your-Loki-Endpoint-url>
+      # The tenant ID used by default to push logs to Loki. If omitted or empty
+      # it assumes Loki is running in single-tenant mode and no X-Scope-OrgID header
+      # is sent.
+      tenant_id: ACME
+
+      external_labels:
+        tenant: ACME
+
+      # Loki has ingress in istio and authorize request with mTLS
+      # So you have to set valid certificate
+      tls_config:
+        ca_file: /run/secrets/promtail-cluster-tls/ca-cert
+        cert_file: /run/secrets/promtail-cluster-tls/tls-cert
+        key_file: /run/secrets/promtail-cluster-tls/tls-key
+        insecure_skip_verify: false
+
+# Inject secret with certificate to promtail pod
+extraVolumes:
+  - name: promtail-cluster-tls
+    secret:
+      secretName: promtail-cluster-tls
+
+# Extra volume mounts together. Corresponds to `extraVolumes`.
+extraVolumeMounts:
+  - name: promtail-cluster-tls
+    mountPath: /run/secrets/promtail-cluster-tls/
+    readOnly: true
+

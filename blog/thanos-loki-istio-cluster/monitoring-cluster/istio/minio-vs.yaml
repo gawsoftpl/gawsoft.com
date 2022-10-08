@@ -1,0 +1,40 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: minio
+spec:
+  gateways:
+    - minio
+  hosts:
+    - "minio.172.19.255.200.nip.io"
+  http:
+    - name: "minio"
+      match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: minio.storage.svc.cluster.local
+            port:
+              number: 9000
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: minio-dashboard
+spec:
+  gateways:
+    - istio
+  hosts:
+    - "dashboard-minio.172.19.255.200.nip.io"
+  http:
+    - name: "miniodashboard"
+      match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: minio.storage.svc.cluster.local
+            port:
+              number: 9001
+

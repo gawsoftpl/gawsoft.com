@@ -1,0 +1,77 @@
+repositories:
+  - name: prometheus-community
+    url: https://prometheus-community.github.io/helm-charts
+  - name: istio
+    url: https://istio-release.storage.googleapis.com/charts
+  - name: grafana
+    url: https://grafana.github.io/helm-charts
+
+releases:
+  # Istio START
+  - name: istio-base
+    chart: istio/base
+    namespace: istio-system
+    createNamespace: true
+    wait: true
+
+  - name: istio-istiod
+    chart: istio/istiod
+    namespace: istio-system
+    createNamespace: true
+    wait: true
+
+  - name: istio-gateway
+    chart: istio/gateway
+    namespace: istio-system
+    createNamespace: true
+  #Istio END
+
+  # Loki log exporter
+  - name: promtail
+    chart: grafana/promtail
+    namespace: monitoring
+    createNamespace: true
+    set:
+      - name: config.clients[0].url
+        value: {{ requiredEnv "LOKI_ENDPOINT" | quote }}
+      - name: config.clients[0].tenant_id
+        value: {{ requiredEnv "TENANT_ID" | quote }}
+      - name: config.clients[0].external_labels.tenant
+        value: {{ requiredEnv "TENANT_ID" | quote }}
+    values:
+      - promtail/values.yaml
+
+  # Install Prometheus stack with Thanos Sidecar
+  - name: prometheus
+    chart: prometheus-community/kube-prometheus-stack
+    namespace: monitoring
+    createNamespace: true
+    values:
+      - prometheus/values.yaml
+    set:
+      - name: prometheus.prometheusSpec.externalLabels.cluster
+        value: {{ requiredEnv "TENANT_ID" | quote }}
+
+# Global Hooks
+hooks:
+  - events:
+      - prepare
+    command: /bin/sh
+    args:
+      - -c
+      - |
+        kubectl label namespace monitoring istio-injection=disabled --overwrite || true
+
+  - events:
+      - cleanup
+    command: /bin/sh
+    args:
+      - -c
+      - |
+        kubectl delete pod -n istio-system -l app=istio-gateway;
+        kubectl label namespace monitoring istio-injection=enabled --overwrite;
+        kubectl delete pod -n monitoring --all;
+
+
+
+

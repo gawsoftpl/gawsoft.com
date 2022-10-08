@@ -1,0 +1,9 @@
+image:  
+  registry: docker.io
+  repository: bitnami/redis
+  tag: 7.0.5-debian-11-r3
+
+auth:
+  enabled: false
+
+architecture: standalone

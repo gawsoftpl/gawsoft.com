@@ -1,0 +1,29 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: VirtualService
+metadata:
+  name: thanos-sidecar
+spec:
+  gateways:
+    - nip-io
+  hosts:
+    - "prom-cluster.172.19.0.135.nip.io"
+  http:
+    - name: "prometheus-sidecar-http"
+      match:
+        - uri:
+            prefix: "/metrics"
+      route:
+        - destination:
+            host: prometheus-kube-prometheus-thanos-discovery.monitoring.svc.cluster.local
+            port:
+              number: 10902
+
+    - name: "prometheus-sidecar-grpc"
+      match:
+        - uri:
+            prefix: "/"
+      route:
+        - destination:
+            host: prometheus-kube-prometheus-thanos-discovery.monitoring.svc.cluster.local
+            port:
+              number: 10901
