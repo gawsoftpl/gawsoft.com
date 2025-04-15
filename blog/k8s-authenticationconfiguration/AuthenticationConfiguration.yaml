@@ -1,0 +1,14 @@
+apiVersion: apiserver.config.k8s.io/v1beta1
+kind: AuthenticationConfiguration
+jwt:
+  - issuer:
+      url: https://xxx.ngrok-free.app
+      audiences:
+        - test
+    claimMappings:
+      username:
+        claim: user
+        prefix: ""
+      groups:
+        claim: groups
+        prefix: ""

@@ -1,0 +1,168 @@
+services:
+
+  #######################################
+  # Spire BEGIN
+  #######################################
+  spire-server:
+    image: ghcr.io/spiffe/spire-server:1.12.0
+    container_name: spire-server
+    hostname: spire-server
+    volumes:
+    - ./services/share:/opt/spire/sockets
+    - ./services/spire-server:/opt/spire/conf/server
+    command: ["-config", "/opt/spire/conf/server/server.conf"]
+
+  spire-agent:
+    image: ghcr.io/spiffe/spire-agent:1.12.0
+    # Share the host pid namespace so this agent can attest the nested servers
+    pid: "host"
+    container_name: spire-agent
+    hostname: spire-agent
+    depends_on:
+      - spire-server
+    volumes:
+    - ./services/share:/opt/spire/sockets
+    - ./services/spire-agent:/opt/spire/conf/agent
+    - /var/run/:/var/run/ # Have to have access docker socket
+    command: ["-config", "/opt/spire/conf/agent/agent.conf"]
+    labels:
+      # label to attest server against root-agent
+      - org.example.name=spire-agent
+  #######################################
+  # Spire END
+  #######################################
+
+
+  #######################################
+  # Worker service which will send request
+  # to invoices and payments microservices
+  # This microservice have to have jwt token and tls cert
+  # signed by spiffe
+  #######################################
+  worker:
+    image: ghcr.io/spiffe/spiffe-helper:0.10.0
+    command:
+      - -config
+      - /worker-config/spiffe-helper.conf
+    container_name: worker
+    hostname: worker
+    depends_on:
+      - spire-agent
+    labels:
+      # label to attest server against root-agent
+      - org.example.name=worker
+    volumes:
+      - ./services/share:/opt/spire/sockets
+      - ./services/worker:/worker-config
+      - ./services/worker/generated-certs:/certs
+
+  #######################################
+  # Invoices microservices BEGIN
+  # Service require tls certificate
+  # - signed by spiffe
+  # - and have to have URI:spiffe://example.org/worker
+  #######################################
+  invoices-tls:
+    build: services/invoices-tls
+    container_name: invoices-tls
+    restart: on-failure
+    hostname: invoices-tls
+    depends_on:
+      - invoices-tls-sidecar
+    environment:
+      ALLOW_SPIFFE_URI: "spiffe://example.org/worker"
+      CA_CERT_FILE: /tls/ca.pem
+      CERT_FILE: /tls/tls.crt
+      KEY_FILE: /tls/tls.key
+    volumes:
+      - ./services/invoices-tls-sidecar/generated-certs:/tls
+    ports:
+      - 443:443
+    labels:
+      # label to attest server against root-agent
+      - org.example.name=invoices-tls
+
+  invoices-tls-sidecar:
+    image: ghcr.io/spiffe/spiffe-helper:0.10.0
+    command:
+      - -config
+      - /worker-config/spiffe-helper.conf
+    container_name: invoices-tls-sidecar
+    hostname: invoices-tls-sidecar
+    depends_on:
+      - spire-agent
+    labels:
+      # label to attest server against root-agent
+      - org.example.name=invoices-tls
+      - org.example.type=sidecar
+    volumes:
+      - ./services/share:/opt/spire/sockets
+      - ./services/invoices-tls-sidecar:/worker-config
+      - ./services/invoices-tls-sidecar/generated-certs:/certs
+  #######################################
+  # Invoices microservices END
+  #######################################
+
+  #######################################
+  # Payments microservices required jwt token
+  # signed by spiffe/spire and audience=payments
+  #######################################
+  payments-jwt:
+    container_name: payments
+    hostname: payments
+    build: services/payments-jwt
+    depends_on:
+      - spire-agent
+    environment:
+      JWKS_URI: http://oidc-discovery-provider:8080/keys
+      # Require JWT_AUDIENCE
+      JWT_AUDIENCE: payments-jwt
+      # Allow only this subject
+      JWT_SUB: spiffe://example.org/worker
+    labels:
+      # label to attest server against root-agent
+      - org.example.name=payments
+    ports:
+      - 3000:3000
+
+  #######################################
+  # OIDC provider BEGIN
+  # Oidc service endpoint for share jwks and openid configuration
+  #######################################
+  oidc-discovery-provider:
+    image: ghcr.io/spiffe/spire-oidc-provider:1.4.7
+    container_name: oidc-discovery-provider
+    command: -config /conf/oidc-discovery-provider.conf
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./services/share:/opt/spire/sockets
+      - ./services/oidc-discovery-provider/conf:/conf
+      - ./services/oidc-discovery-provider/generated-certs:/certs
+    depends_on:
+      - oidc-discovery-provider-sidecar
+    labels:
+      # label to attest server against spire-agent
+      - org.example.name=oidc-discovery-provider
+
+  oidc-discovery-provider-sidecar:
+    image: ghcr.io/spiffe/spiffe-helper:0.10.0
+    command:
+      - -config
+      - /config/spiffe-helper.conf
+    container_name: oidc-discovery-provider-sidecar
+    hostname: oidc-discovery-provider-sidecar
+    depends_on:
+      - spire-server
+    labels:
+      # label to attest server against root-agent
+      - org.example.name=oidc-discovery-provider
+      - org.example.type=sidecar
+    volumes:
+      - ./services/share:/opt/spire/sockets
+      - ./services/oidc-discovery-provider/conf:/config
+      - ./services/oidc-discovery-provider/generated-certs:/certs
+
+  #######################################
+  # OIDC END
+  #######################################
