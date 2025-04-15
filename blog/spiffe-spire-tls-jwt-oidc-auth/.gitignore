@@ -11,5 +11,6 @@ gencerts
 *.pem
 *.crt.pem
 *.key.pem
+*.key
 *.crt
 *.token
